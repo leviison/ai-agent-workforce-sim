@@ -1,7 +1,68 @@
-import ReactFlow, { Node, Edge } from 'reactflow'
+import { useMemo, useCallback, memo } from 'react'
+import ReactFlow, { Node, Edge, Handle, Position, NodeProps } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useSimulationStore } from '../store/simulationStore'
-import { scenarios } from '@sim/simulation-facade'
+import { scenarios } from '../../../../packages/simulation-facade/src/index'
+
+// Custom node data shape
+type TaskNodeData = {
+  taskId: string
+  taskType: string
+  agentId: string
+  agents: { id: string; role: string }[]
+  onAssign: (taskId: string, agentId: string) => void
+}
+
+// Custom node component — must be defined outside the parent or memoized
+const TaskNode = memo(({ data }: NodeProps<TaskNodeData>) => {
+  return (
+    <div
+      style={{
+        border: data.agentId ? '1px solid #d1d5db' : '2px solid #dc2626',
+        borderRadius: '8px',
+        padding: '10px 14px',
+        backgroundColor: '#ffffff',
+        width: 220,
+      }}
+    >
+      <Handle type="target" position={Position.Top} style={{ visibility: 'hidden' }} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#111827' }}>
+          {data.taskType}
+        </span>
+        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{data.taskId}</span>
+        <select
+          value={data.agentId}
+          onChange={(e) => data.onAssign(data.taskId, e.target.value)}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            fontSize: '0.8rem',
+            padding: '3px 6px',
+            borderRadius: '4px',
+            border: '1px solid #d1d5db',
+            backgroundColor: '#ffffff',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="">— assign agent —</option>
+          {data.agents.map((agent) => (
+            <option key={agent.id} value={agent.id}>
+              {agent.role} ({agent.id})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <Handle type="source" position={Position.Bottom} style={{ visibility: 'hidden' }} />
+    </div>
+  )
+})
+TaskNode.displayName = 'TaskNode'
+
+const nodeTypes = { taskNode: TaskNode }
 
 export default function WorkflowBuilder() {
   const agentAssignments = useSimulationStore((s) => s.agentAssignments)
@@ -10,74 +71,54 @@ export default function WorkflowBuilder() {
 
   const scenario = scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0]
 
-  // Dynamically compute positions — evenly spaced vertically at 150px intervals
-  const positions: Record<string, { x: number; y: number }> = {}
-  scenario.tasks.forEach((task, index) => {
-    positions[task.id] = { x: 0, y: index * 150 }
-  })
+  const onAssign = useCallback(
+    (taskId: string, agentId: string) => assignAgent(taskId, agentId),
+    [assignAgent],
+  )
 
-  const nodes: Node[] = scenario.tasks.map((task) => {
-    const assigned = agentAssignments[task.id]
-    return {
-      id: task.id,
-      position: positions[task.id] ?? { x: 0, y: 0 },
-      data: {
-        label: (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '180px' }}>
-            <span style={{ fontWeight: 600, fontSize: '0.85rem', color: '#111827' }}>
-              {task.type}
-            </span>
-            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{task.id}</span>
-            <select
-              value={assigned ?? ''}
-              onChange={(e) => assignAgent(task.id, e.target.value)}
-              style={{
-                fontSize: '0.8rem',
-                padding: '3px 6px',
-                borderRadius: '4px',
-                border: '1px solid #d1d5db',
-                backgroundColor: '#ffffff',
-                cursor: 'pointer',
-              }}
-              // Prevent React Flow from treating click on select as node drag
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <option value="">— assign agent —</option>
-              {scenario.agents.map((agent) => (
-                <option key={agent.id} value={agent.id}>
-                  {agent.role} ({agent.id})
-                </option>
-              ))}
-            </select>
-          </div>
-        ),
-      },
-      style: {
-        border: assigned ? '1px solid #d1d5db' : '2px solid #dc2626',
-        borderRadius: '8px',
-        padding: '10px 14px',
-        backgroundColor: '#ffffff',
-        width: 220,
-      },
-    }
-  })
+  const agents = useMemo(
+    () => scenario.agents.map((a) => ({ id: a.id, role: a.role })),
+    [scenario],
+  )
 
-  const edges: Edge[] = []
-  scenario.tasks.forEach((task) => {
-    task.dependencies.forEach((depId) => {
-      edges.push({
-        id: `${depId}->${task.id}`,
-        source: depId,
-        target: task.id,
-        type: 'smoothstep',
-        style: { stroke: '#6b7280' },
+  const nodes: Node<TaskNodeData>[] = useMemo(
+    () =>
+      scenario.tasks.map((task, index) => ({
+        id: task.id,
+        type: 'taskNode',
+        position: { x: 100, y: index * 150 },
+        data: {
+          taskId: task.id,
+          taskType: task.type,
+          agentId: agentAssignments[task.id] ?? '',
+          agents,
+          onAssign,
+        },
+      })),
+    [scenario, agentAssignments, agents, onAssign],
+  )
+
+  const edges: Edge[] = useMemo(() => {
+    const result: Edge[] = []
+    scenario.tasks.forEach((task) => {
+      task.dependencies.forEach((depId) => {
+        result.push({
+          id: `${depId}->${task.id}`,
+          source: depId,
+          target: task.id,
+          type: 'smoothstep',
+          style: { stroke: '#6b7280' },
+        })
       })
     })
-  })
+    return result
+  }, [scenario])
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>Step 1 — Build Your Workflow</h2>
+      <h2 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+        Step 1 — Build Your Workflow
+      </h2>
       <div
         style={{
           border: '1px solid #e5e7eb',
@@ -88,13 +129,19 @@ export default function WorkflowBuilder() {
         }}
       >
         <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        elementsSelectable={false}
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.3 }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          panOnDrag={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          zoomOnDoubleClick={false}
+          preventScrolling={false}
         />
       </div>
     </div>
