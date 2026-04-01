@@ -77,4 +77,5 @@ export const researchPipelinePlugin: ScenarioPlugin = {
   scenario: researchPipeline,
   coachingRules: researchPipelineRules,
   requiredMechanics: ['time-limit'],
+  outputPluginId: 'default-json-output',
 }

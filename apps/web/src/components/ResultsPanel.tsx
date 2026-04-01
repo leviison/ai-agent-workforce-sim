@@ -1,15 +1,40 @@
 import { useSimulationStore } from '../store/simulationStore'
+import type { SimulationResultViewModel } from '@sim/simulation-facade'
 import TraceTimeline from './TraceTimeline'
 import CoachingInsightsPanel from './CoachingInsightsPanel'
 import SimulationRunCard from './SimulationRunCard'
 import ScoreBreakdownPanel from './ScoreBreakdownPanel'
 
-function downloadJson(data: unknown, filename: string) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+function exportResult(result: SimulationResultViewModel, format: 'json' | 'csv') {
+  let content: string
+  let mimeType: string
+  let extension: string
+
+  if (format === 'csv') {
+    const lines: string[] = []
+    lines.push(`# Scenario: ${result.scenarioName} (${result.scenarioId})`)
+    lines.push(`# Seed: ${result.seed}`)
+    lines.push(`# Score: quality=${result.score.quality}, costEfficiency=${result.score.costEfficiency}, timeEfficiency=${result.score.timeEfficiency}, robustness=${result.score.robustness}`)
+    lines.push('')
+    lines.push('nodeId,agentId,taskId,success,startTick,endTick,cost,quality,retryCount,failureReason')
+    for (const t of result.traces) {
+      const esc = (v: unknown) => { const s = String(v ?? ''); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s }
+      lines.push([esc(t.nodeId), esc(t.agentId), esc(t.taskId), t.success, t.startTick, t.endTick, t.cost, t.quality, t.retryCount, esc(t.failureReason ?? '')].join(','))
+    }
+    content = lines.join('\n')
+    mimeType = 'text/csv'
+    extension = 'csv'
+  } else {
+    content = JSON.stringify(result, null, 2)
+    mimeType = 'application/json'
+    extension = 'json'
+  }
+
+  const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = filename
+  a.download = `sim-result-${result.scenarioId}-seed${result.seed}.${extension}`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -68,27 +93,35 @@ export default function ResultsPanel() {
   // No result yet (shouldn't normally happen, but guard)
   if (!result) return null
 
-  const filename = `sim-result-${result.scenarioId}-seed${result.seed}.json`
+  const exportBtnStyle: React.CSSProperties = {
+    padding: '6px 14px',
+    borderRadius: '6px',
+    border: '1px solid #d1d5db',
+    backgroundColor: '#ffffff',
+    color: '#374151',
+    fontWeight: 500,
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+  }
 
   return (
     <div style={cardStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
         <h2 style={{ margin: 0, fontSize: '1.125rem', color: '#111827' }}>Step 3 — Analyse Results</h2>
-        <button
-          onClick={() => downloadJson(result, filename)}
-          style={{
-            padding: '6px 14px',
-            borderRadius: '6px',
-            border: '1px solid #d1d5db',
-            backgroundColor: '#ffffff',
-            color: '#374151',
-            fontWeight: 500,
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-          }}
-        >
-          Export JSON
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => exportResult(result, 'json')}
+            style={exportBtnStyle}
+          >
+            Export JSON
+          </button>
+          <button
+            onClick={() => exportResult(result, 'csv')}
+            style={exportBtnStyle}
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <p style={{ margin: '0 0 20px', fontSize: '0.875rem', color: '#6b7280' }}>

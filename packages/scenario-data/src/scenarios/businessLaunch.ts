@@ -83,6 +83,7 @@ export const businessLaunchPlugin: ScenarioPlugin = {
   description: businessLaunch.description,
   scenario: businessLaunch,
   coachingRules: businessLaunchRules,
+  outputPluginId: 'default-json-output',
 }
 
 export const scenarios: Scenario[] = [businessLaunch]

@@ -9,8 +9,27 @@ export function runSimulation(input: SimulationInput, mechanics?: MechanicsPlugi
   const config: ScoringConfig = input.scoringConfig ?? defaultScoringConfig
   const rng = createRng(seed)
 
+  if (workflow.nodes.length === 0) {
+    return {
+      outputs: {},
+      metrics: { quality: 0, cost_efficiency: 0, time_efficiency: 0, robustness: 0 },
+      trace: [],
+      insights: [],
+    }
+  }
+
   const agentMap = new Map<string, Agent>(agents.map(a => [a.id, a]))
   const taskMap = new Map<string, Task>(scenario.tasks.map(t => [t.id, t]))
+
+  // Validate all node references before running
+  for (const node of workflow.nodes) {
+    if (!agentMap.has(node.agent_id)) {
+      throw new Error(`Agent '${node.agent_id}' not found for node '${node.id}'`)
+    }
+    if (!taskMap.has(node.task_id)) {
+      throw new Error(`Task '${node.task_id}' not found for node '${node.id}'`)
+    }
+  }
 
   const sorted = topoSort(workflow)
   const trace: Trace[] = []
@@ -34,8 +53,11 @@ export function runSimulation(input: SimulationInput, mechanics?: MechanicsPlugi
     const agent = agentMap.get(node.agent_id)
     const task = taskMap.get(node.task_id)
 
-    if (!agent || !task) {
-      throw new Error(`Missing agent (${node.agent_id}) or task (${node.task_id}) for node ${node.id}`)
+    if (!agent) {
+      throw new Error(`Agent '${node.agent_id}' not found for node '${node.id}'`)
+    }
+    if (!task) {
+      throw new Error(`Task '${node.task_id}' not found for node '${node.id}'`)
     }
 
     const tickDelta = Math.ceil(task.complexity * 10)

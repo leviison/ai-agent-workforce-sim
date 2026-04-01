@@ -85,4 +85,5 @@ export const incidentResponsePlugin: ScenarioPlugin = {
   scenario: incidentResponse,
   coachingRules: incidentResponseRules,
   requiredMechanics: ['budget-constraint'],
+  outputPluginId: 'default-json-output',
 }
