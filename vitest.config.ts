@@ -10,6 +10,7 @@ export default defineConfig({
       '@sim/coaching-engine': resolve(__dirname, 'packages/coaching-engine/src/index.ts'),
       '@sim/ui-contracts': resolve(__dirname, 'packages/ui-contracts/src/index.ts'),
       '@sim/simulation-facade': resolve(__dirname, 'packages/simulation-facade/src/index.ts'),
+      '@sim/plugin-registry': resolve(__dirname, 'packages/plugin-registry/src/index.ts'),
     },
   },
   test: {

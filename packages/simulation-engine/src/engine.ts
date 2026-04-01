@@ -1,12 +1,12 @@
-import type { SimulationInput, SimulationOutput, Trace, Agent, Task, ScoringConfig } from '@sim/shared-types'
+import type { SimulationInput, SimulationOutput, Trace, Agent, Task, ScoringConfig, MechanicsPlugin, MechanicsContext } from '@sim/shared-types'
 import { FailureReason, defaultScoringConfig } from '@sim/shared-types'
 import { createRng } from './rng'
 import { topoSort } from './dag'
 import { computeScore } from './scorer'
 
-export function runSimulation(input: SimulationInput): SimulationOutput {
+export function runSimulation(input: SimulationInput, mechanics?: MechanicsPlugin[]): SimulationOutput {
   const { workflow, agents, scenario, seed } = input
-  const scoringConfig: ScoringConfig = input.scoringConfig ?? defaultScoringConfig
+  const config: ScoringConfig = input.scoringConfig ?? defaultScoringConfig
   const rng = createRng(seed)
 
   const agentMap = new Map<string, Agent>(agents.map(a => [a.id, a]))
@@ -17,6 +17,18 @@ export function runSimulation(input: SimulationInput): SimulationOutput {
 
   // tick advances by Math.ceil(task.complexity * 10) per task execution (each attempt)
   let tick = 0
+
+  const context: MechanicsContext = {
+    tick: 0,
+    trace,
+    agents: agentMap,
+    tasks: taskMap,
+    scoringConfig: config,
+  }
+
+  for (const m of mechanics ?? []) {
+    m.onBeforeSimulation?.(context)
+  }
 
   for (const node of sorted) {
     const agent = agentMap.get(node.agent_id)
@@ -29,7 +41,7 @@ export function runSimulation(input: SimulationInput): SimulationOutput {
     const tickDelta = Math.ceil(task.complexity * 10)
     const firstAttemptNodeId = `${node.id}-attempt-0`
 
-    for (let attempt = 0; attempt <= scoringConfig.maxRetries; attempt++) {
+    for (let attempt = 0; attempt <= context.scoringConfig.maxRetries; attempt++) {
       const startTick = tick
       const endTick = tick + tickDelta
       tick = endTick
@@ -84,14 +96,30 @@ export function runSimulation(input: SimulationInput): SimulationOutput {
       // Stop retrying once a task succeeds
       if (attemptSuccess) break
     }
+
+    // Sync engine state to context before hooks
+    context.tick = tick
+    context.trace = trace
+
+    for (const m of mechanics ?? []) {
+      m.onAfterNode?.(node, context)
+    }
   }
 
-  const metrics = computeScore(trace, scoringConfig, scenario.tasks)
+  // Sync engine state to context before scoring hooks
+  context.tick = tick
+  context.trace = trace
+
+  for (const m of mechanics ?? []) {
+    m.onBeforeScoring?.(context)
+  }
+
+  const metrics = computeScore(context.trace, context.scoringConfig, scenario.tasks)
 
   return {
-    outputs: buildOutputs(trace),
+    outputs: buildOutputs(context.trace),
     metrics,
-    trace,
+    trace: context.trace,
     insights: [],
   }
 }

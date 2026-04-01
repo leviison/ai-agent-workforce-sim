@@ -141,3 +141,5 @@ export type CoachingRule = {
   insightText: string
   severity: 'info' | 'warning' | 'critical'
 }
+
+export * from './plugins'

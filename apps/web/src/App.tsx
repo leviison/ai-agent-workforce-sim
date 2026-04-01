@@ -1,7 +1,7 @@
 import WorkflowBuilder from './components/WorkflowBuilder'
 import RunControls from './components/RunControls'
 import ResultsPanel from './components/ResultsPanel'
-import { businessLaunch } from '../../../packages/simulation-facade/src/index'
+import ScenarioSelector from './components/ScenarioSelector'
 
 export default function App() {
   return (
@@ -22,20 +22,7 @@ export default function App() {
           Assign agents to tasks, configure your seed, then run the simulation.
         </p>
 
-        <div
-          style={{
-            backgroundColor: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '8px',
-            padding: '14px 18px',
-            marginBottom: '24px',
-          }}
-        >
-          <strong>{businessLaunch.name}</strong>
-          <p style={{ margin: '4px 0 0', fontSize: '0.875rem', color: '#374151' }}>
-            {businessLaunch.description}
-          </p>
-        </div>
+        <ScenarioSelector />
 
         {/* Workflow DAG builder */}
         <div style={{ marginBottom: '24px' }}>

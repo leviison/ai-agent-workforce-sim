@@ -1,4 +1,4 @@
-import type { ScoreSummaryViewModel } from '../../../packages/ui-contracts/src/index'
+import type { ScoreSummaryViewModel } from '../../../../packages/ui-contracts/src/index'
 import { pct } from '../utils/format'
 
 type Props = {

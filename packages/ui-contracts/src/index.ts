@@ -46,3 +46,13 @@ export type ScoreSummaryViewModel = {
   taskCount: number
   durationTicks: number
 }
+
+export type ScenarioSelectorViewModel = {
+  scenarios: {
+    id: string
+    name: string
+    description: string
+    taskCount: number
+    agentCount: number
+  }[]
+}

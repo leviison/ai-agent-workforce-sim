@@ -1,4 +1,4 @@
-import type { TraceRowViewModel } from '../../../packages/ui-contracts/src/index'
+import type { TraceRowViewModel } from '../../../../packages/ui-contracts/src/index'
 
 type Props = {
   traces: TraceRowViewModel[]

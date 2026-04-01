@@ -1,27 +1,26 @@
 import ReactFlow, { Node, Edge } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useSimulationStore } from '../store/simulationStore'
-import { businessLaunch } from '../../../packages/simulation-facade/src/index'
-
-// Manual top-to-bottom layout positions keyed by task id
-const POSITIONS: Record<string, { x: number; y: number }> = {
-  'task-research':        { x: 0, y: 0 },
-  'task-problem-mapping': { x: 0, y: 150 },
-  'task-idea-generation': { x: 0, y: 300 },
-  'task-offer-design':    { x: 0, y: 450 },
-  'task-launch-plan':     { x: 0, y: 600 },
-  'task-validation':      { x: 0, y: 750 },
-}
+import { scenarios } from '@sim/simulation-facade'
 
 export default function WorkflowBuilder() {
   const agentAssignments = useSimulationStore((s) => s.agentAssignments)
   const assignAgent = useSimulationStore((s) => s.assignAgent)
+  const selectedScenarioId = useSimulationStore((s) => s.selectedScenarioId)
 
-  const nodes: Node[] = businessLaunch.tasks.map((task) => {
+  const scenario = scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0]
+
+  // Dynamically compute positions — evenly spaced vertically at 150px intervals
+  const positions: Record<string, { x: number; y: number }> = {}
+  scenario.tasks.forEach((task, index) => {
+    positions[task.id] = { x: 0, y: index * 150 }
+  })
+
+  const nodes: Node[] = scenario.tasks.map((task) => {
     const assigned = agentAssignments[task.id]
     return {
       id: task.id,
-      position: POSITIONS[task.id] ?? { x: 0, y: 0 },
+      position: positions[task.id] ?? { x: 0, y: 0 },
       data: {
         label: (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '180px' }}>
@@ -44,7 +43,7 @@ export default function WorkflowBuilder() {
               onMouseDown={(e) => e.stopPropagation()}
             >
               <option value="">— assign agent —</option>
-              {businessLaunch.agents.map((agent) => (
+              {scenario.agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
                   {agent.role} ({agent.id})
                 </option>
@@ -64,7 +63,7 @@ export default function WorkflowBuilder() {
   })
 
   const edges: Edge[] = []
-  businessLaunch.tasks.forEach((task) => {
+  scenario.tasks.forEach((task) => {
     task.dependencies.forEach((depId) => {
       edges.push({
         id: `${depId}->${task.id}`,
@@ -84,7 +83,7 @@ export default function WorkflowBuilder() {
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
           backgroundColor: '#f9fafb',
-          height: '900px',
+          height: `${Math.max(400, scenario.tasks.length * 150 + 100)}px`,
           overflow: 'hidden',
         }}
       >

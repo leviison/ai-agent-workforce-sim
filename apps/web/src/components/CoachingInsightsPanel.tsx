@@ -1,4 +1,4 @@
-import { businessLaunchRules } from '../../../packages/simulation-facade/src/index'
+import { businessLaunchRules } from '../../../../packages/simulation-facade/src/index'
 
 type Props = {
   insights: string[]

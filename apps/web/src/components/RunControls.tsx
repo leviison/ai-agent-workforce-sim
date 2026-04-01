@@ -1,16 +1,18 @@
 import { useSimulationStore } from '../store/simulationStore'
-import { businessLaunch } from '../../../packages/simulation-facade/src/index'
+import { scenarios } from '@sim/simulation-facade'
 
 export default function RunControls() {
   const seed = useSimulationStore((s) => s.seed)
   const runStatus = useSimulationStore((s) => s.runStatus)
   const errorMessage = useSimulationStore((s) => s.errorMessage)
   const agentAssignments = useSimulationStore((s) => s.agentAssignments)
+  const selectedScenarioId = useSimulationStore((s) => s.selectedScenarioId)
   const setSeed = useSimulationStore((s) => s.setSeed)
   const runSimulation = useSimulationStore((s) => s.runSimulation)
   const reset = useSimulationStore((s) => s.reset)
 
-  const allTasksAssigned = businessLaunch.tasks.every(
+  const scenario = scenarios.find((s) => s.id === selectedScenarioId) ?? scenarios[0]
+  const allTasksAssigned = scenario.tasks.every(
     (task) => !!agentAssignments[task.id],
   )
   const runDisabled = runStatus === 'running' || !allTasksAssigned
