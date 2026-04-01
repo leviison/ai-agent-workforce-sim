@@ -1,4 +1,5 @@
-import { businessLaunchRules } from '../../../../packages/simulation-facade/src/index'
+import { getCoachingRules } from '../../../../packages/simulation-facade/src/index'
+import { useSimulationStore } from '../store/simulationStore'
 
 type Props = {
   insights: string[]
@@ -11,6 +12,9 @@ const BORDER_COLOR: Record<string, string> = {
 }
 
 export default function CoachingInsightsPanel({ insights }: Props) {
+  const selectedScenarioId = useSimulationStore((s) => s.selectedScenarioId)
+  const rules = getCoachingRules(selectedScenarioId)
+
   if (insights.length === 0) {
     return (
       <section>
@@ -43,7 +47,7 @@ export default function CoachingInsightsPanel({ insights }: Props) {
       </h3>
 
       {insights.map((insight, i) => {
-        const rule = businessLaunchRules.find((r) => r.insightText === insight)
+        const rule = rules.find((r) => r.insightText === insight)
         const severity = rule?.severity ?? 'info'
         const borderColor = BORDER_COLOR[severity] ?? BORDER_COLOR.info
 

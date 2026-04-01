@@ -13,6 +13,14 @@ export type { SimulationInput, OutputFormat } from '@sim/shared-types'
 export type { SimulationResultViewModel, TraceRowViewModel, ScoreSummaryViewModel } from '@sim/ui-contracts'
 export { mapTraceToRow, mapScoreToSummary, mapOutputToViewModel } from './mappers'
 export { businessLaunch, scenarios } from '@sim/scenario-data'
+export type { CoachingRule } from '@sim/shared-types'
+
+/**
+ * Get coaching rules for a scenario by ID.
+ */
+export function getCoachingRules(scenarioId: string): import('@sim/shared-types').CoachingRule[] {
+  return registry.getScenario(scenarioId)?.coachingRules ?? []
+}
 
 // Register all plugins once at module load
 let _pluginsRegistered = false
